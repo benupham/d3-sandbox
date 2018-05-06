@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<style>
+.node {
+  cursor: pointer;
+}
+
+.node:hover {
+  stroke: #000;
+  stroke-width: 1.5px;
+}
+
+.node--leaf {
+  fill: white;
+}
+
+.label {
+  font: 11px "Helvetica Neue", Helvetica, Arial, sans-serif;
+  text-anchor: middle;
+  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff;
+}
+
+.label,
+.node--root {
+  pointer-events: none;
+}
+</style>
+
+<body>
+    <button id="products" class="json-download" value="4">Products</button>
+    <button id="subdepts" class="json-download" value="2">Subdepartments</button>
+    <button id="depts" class="json-download" value="1">Departments</button>
+
+
+  <div id="downloadJson"></div>
+</body>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script>
+
+//from here https://codepen.io/bupham/pen/yjogXa?editors=0010
+// THIS CODE USES D3 V3!!!
+
+var margin = 20,
+diameter = 1800;
+
+var selectedNode = null,
+draggedNode = null;
+
+var color = d3.scale.linear()
+.domain([-1, 5])
+.range(["hsl(152,80%,80%)", "hsl(228,30%,40%)"])
+.interpolate(d3.interpolateHcl);
+
+var pack = d3.layout.pack()
+.padding(0)
+.size([diameter - margin, diameter - margin])
+.sort(function(a, b) { return b.value - a.value; })
+.value(function(d) {
+   return d.size;
+})
+
+var svg = d3.select("body").append("svg")
+.attr("width", diameter)
+.attr("height", diameter)
+.append("g")
+.attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+
+d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
+   if (error) throw error;
+
+   var log = document.querySelector("div#downloadJson");
+   console.log(log);
+
+
+   document.querySelectorAll('button.json-download')[0].onclick=changeEventHandler;
+   document.querySelectorAll('button.json-download')[1].onclick=changeEventHandler;
+   document.querySelectorAll('button.json-download')[2].onclick=changeEventHandler;
+
+   function changeEventHandler(event) {
+        let depth = event.target.value;
+
+        const featuresObj = {
+         "type": "FeatureCollection",
+         "features": [],
+        };
+        
+        let scale = 0;
+        for (var i = nodes.length - 1; i >= 0; i--) {
+            if (nodes[i].depth == 4) {
+                scale = 100 / nodes[i].r; 
+                i = 0;
+            }
+        }
+        
+        nodes.forEach((n,i) => {
+            if (depth == 4) { //product level
+                featuresObj.features.push({
+                    "type": "Feature",
+                    "id": n.id,
+                    "properties": {
+                        "name": n.name,
+                        "price": n.price,
+                        "offset": [0,0],
+                        "size": [200,200],
+                        "src": n.img,
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [n.x * scale, -n.y * scale]
+                    }
+                })
+            } else if ( depth == 2) { //subdept level
+                featuresObj.features.push({
+                    "type": "Feature",
+                    "id": n.id,
+                    "properties": {
+                        "name": n.name,
+                        "radius": n.r * scale,
+                        "fill": "rgba(255,255,255,0.5)"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [n.x * scale, -n.y * scale]
+                    }
+                })
+            } else if ( depth == 1) { //dept level
+                featuresObj.features.push({
+                    "type": "Feature",
+                    "id": n.id,
+                    "properties": {
+                        "name": n.name,
+                        "radius": n.r * scale,
+                        "fill": "rgba(200,200,200,0.5)"
+                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [n.x * scale, -n.y * scale]
+                    }
+                })
+            }
+        });    
+        var dataStr = JSON.stringify(featuresObj, null, 2);
+        log.innerText(dataStr);
+    }
+
+    var focus = root,
+    nodes = pack.nodes(root),
+    view;
+
+
+    var drag = d3.behavior.drag()
+    .on("dragstart", function(d) {
+        draggedNode = d;
+
+    })
+    .on("drag", function(d, i) {
+        d.x += d3.event.dx;
+        d.y += d3.event.dy;
+        d.dragged = true;
+
+        if (d.children) {
+            d.children.forEach( child => {
+                child.x += d3.event.dx;
+                child.y += d3.event.dy;
+                d.dragged = true;
+
+                if (child.children) {
+                    child.children.forEach(grandchild => {
+                        grandchild.x += d3.event.dx;
+                        grandchild.y += d3.event.dy;
+                        d.dragged = true;
+
+                        if (grandchild.children) {
+                            grandchild.children.forEach(ggchild => {
+                                ggchild.x += d3.event.dx;
+                                ggchild.y += d3.event.dy;
+                                d.dragged = true;
+                            })
+                        }
+                    })
+                }
+            });                    
+        }
+
+
+        draw();
+    })
+    .on("dragend", function(d) {
+       console.log("dropped item:", d.name, "dropped on ", selectedNode.name);
+       draggedNode = null;
+    });
+
+    var circle = svg.selectAll("circle")
+    .data(nodes)
+    .enter().append("circle")
+    .attr("class", function(d) {
+       return d.parent ? d.children ? "node node--middle" : "node node--leaf" : "node node--root";
+    })
+    .style("fill", function(d) {
+       return d.children ? color(d.depth) : null;
+    })
+    .style("fill-opacity", function(d) {
+        return d.children ? '0.5' : null;
+    })
+    .on("mouseover", function(node) {
+       overCircle(node);
+    })
+    .on("mouseout", function(node) {
+       outCircle(node);
+    });
+
+         // var text = svg.selectAll("text")
+         //         .data(nodes)
+         //         .enter().append("text")
+         //         .attr("class", "label")
+         //         .style("fill-opacity", function(d) {
+         //             return d.parent === root ? 1 : 0;
+         //         })
+         //         .style("display", function(d) {
+         //             return d.parent === root ? "inline" : "none";
+         //         })
+         //         .text(function(d) {
+         //             return d.name;
+         //         });
+
+         var node = svg.selectAll("circle,text");
+
+         svg.selectAll(".node--leaf, .node--middle").call(drag);
+
+         d3.select("body")
+         .style("background", color(-1))
+
+         draw();
+
+         function draw() {
+           var k = diameter / (root.r * 2 + margin);
+             // node.attr("transform", function(d) {
+             //     return "translate(" + (d.x - root.x) * k + "," + (d.y - root.y) * k + ")";
+             // });
+             circle.attr('cx', function(d) {
+                return (d.x - root.x) * k;
+            })
+             circle.attr('cy', function(d) {
+                return (d.y - root.y) * k;
+            })
+             circle.attr("r", function(d) {
+               return d.r * k;
+           });
+         }
+
+        var overCircle = function(d) {
+           if (d != draggedNode) {
+               console.log(d)
+               selectedNode = d;
+                 //updateTempConnector();
+             }
+         };
+         var outCircle = function(d) {
+           if (d != draggedNode) {
+                 //selectedNode = null;
+                 //updateTempConnector();
+             }
+         };
+
+
+ });
+</script>

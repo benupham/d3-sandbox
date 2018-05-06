@@ -19,24 +19,60 @@
 }
 
 .label,
-.node--root {
+.node--root,
+.node--leaf {
   pointer-events: none;
 }
 
 </style>
 <svg id="the-svg" width="960" height="960"></svg>
+<canvas width="960" height="960"></canvas>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script>
 
-// //var zoom = d3.zoom().on("zoom", zoomFunction);      
 
-// function zoomFunction() {
-//   console.log(d3.event.transform);
-//   console.log(this)
-//   // circle.attr("transform", d3.event.transform);
-//   g.attr("transform", d3.event.transform);
-//   //circle.attr("transform", d3.event.transform);
-// }
+var canvas = document.querySelector("canvas"),
+    context = canvas.getContext("2d"),
+    width = canvas.width,
+    height = canvas.height;
+
+d3.select(canvas)
+    .call(d3.drag()
+        .container(canvas)
+        .subject(dragsubject)
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+function dragsubject() {
+  return simulation.find(d3.event.x - width / 2, d3.event.y - height / 2);
+}
+
+function dragstarted() {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d3.event.subject.fx = d3.event.subject.x;
+  d3.event.subject.fy = d3.event.subject.y;
+}
+
+function dragged() {
+  d3.event.subject.fx = d3.event.x;
+  d3.event.subject.fy = d3.event.y;
+}
+
+function dragended() {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d3.event.subject.fx = null;
+  d3.event.subject.fy = null;
+}
+
+function drawNode(d) {
+  const r = d.r; 
+  context.beginPath();
+  context.moveTo(d.x + r, d.y);
+  context.arc(d.x, d.y, r, 0, 2 * Math.PI);
+  context.fillStyle = d.children ? color(d.depth) : 'white';
+  context.fill();
+}
 
 var svg = d3.select("svg"),
     margin = 1,
@@ -56,51 +92,25 @@ var pack = d3.pack()
 
     console.log(pack);
 
-function zoomed() {
-  g.attr("transform", d3.event.transform);
-}
-
-function dragged(d) {
-  console.log(d.x,d.y);
-  //d3.select(this).attr("cx", d.x = d3.event.x).attr("cy", d.y = d3.event.y);
-  //d3.select(this).attr("transform", (d) => { return "translate(" + (d.x + d3.event.x) + "," + (d.y + d3.event.y) + ")"; });
-}
-
 d3.json("./data/testd3dataAbridged.json", function(error, root) {
   if (error) throw error;
 
   root = d3.hierarchy(root)
       .sum(function(d) { return d.size; })
       .sort(function(a, b) { return b.value - a.value; });
-      console.log(root);
+      console.log('root: ',root);
   var focus = root,
       nodes = pack(root).descendants(),
       view;
-
-  svg.call(d3.zoom()
-    .scaleExtent([1 / 2, 8])
-    .on("zoom", zoomed));
+      console.log('nodes: ',nodes);
 
   var circle = g.selectAll("circle")
     .data(nodes)
     .enter().append("circle")
       .attr("class", function(d) { return d.parent ? d.children ? "node" : "node node--leaf" : "node node--root"; })
       .style("fill", function(d) { return d.children ? color(d.depth) : 'white'; })
-      .on("click", function(d) { 
-        d3.select(this).attr("cx", d.x).attr("cy", d.y);
-        console.log(
-
-          'd3.event.clientX',d3.event.clientX +'\n',
-          'd3.event.clientY',d3.event.clientY +'\n',
-          'd3.event.x',d3.event.x +'\n',
-          'd3.event.y',d3.event.y +'\n',
-          'd3.event.layerX', d3.event.layerX +'\n',
-          'd3.event.layerY', d3.event.layerY +'\n',
-          'data.x',d.x,'data.y',d.y +'\n',
-          'name',this,d.data.name,d) 
-      })
-      //.call(d3.drag().on("drag", dragged));
-
+      //.call(zoom);
+      //.on("click", function(d) { if (focus !== d) zoom(d), d3.event.stopPropagation(); });
 
   var text = g.selectAll("text")
     .data(nodes)
