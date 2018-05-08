@@ -85,7 +85,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
         let scale = 0;
         for (var i = nodes.length - 1; i >= 0; i--) {
             if (nodes[i].depth == 4) {
-                scale = 100 / nodes[i].r; 
+                scale = 100 / nodes[i].r * Math.sqrt(2); 
                 i = 0;
             }
         }
@@ -129,8 +129,6 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
                     "properties": {
                         "name": n.name,
                         "price": n.price,
-                        "offset": [0,0],
-                        "size": [200,200],
                         "src": n.img,
                     },
                     "geometry": {
