@@ -55,7 +55,7 @@ var color = d3.scale.linear()
 .interpolate(d3.interpolateHcl);
 
 var pack = d3.layout.pack()
-.padding(0)
+.padding(0.5)
 .size([diameter - margin, diameter - margin])
 .sort(function(a, b) { return b.value - a.value; })
 .value(function(d) {
@@ -164,38 +164,60 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
                     }
                 })
             } else if (depth == 0) {
+                const feature = {};
+                const properties = {};
+                const geometry = {
+                    "type": "Point",
+                    "coordinates": [n.x * scale, -n.y * scale]
+                };
+
                 const name = n.name.toProperCase(); 
                 const type = n.depth == 4 ? 'product' 
                             : n.depth == 3 ? 'brand'
                             : n.depth == 2 ? 'subdept'
-                            : 'dept';            
-                const parent = n.parent ? n.parent.name.toProperCase() : null;
-                const value = n.value || null;
-                const children = n.children ? n.children.length : null;
-                const radius = n.r * scale || null; 
-                const price = n.price || null;
-                const src = type == 'product' ? n.img
-                            : type == 'brand' ? 'category-images/brands/' + name.toLowerCase().replace(/[\W_]+/g,'-')
-                            : type == 'subdept' ? 'category-images/subdepartments/' + parent.toLowerCase().replace(/[\W_]+/g,'-') + '-' + name.toLowerCase().replace(/[\W_]+/g,'-')
-                            : 'category-images/departments/' + name.toLowerCase().replace(/[\W_]+/g,'-');            
-                featuresObj.features.push({
-                    "type": "Feature",
-                    "id": n.id,
-                    "properties": {
-                        "name": name,
-                        "parent": parent,
-                        "value": value,
-                        "children": children,
-                        "type": type,
-                        "price": price,
-                        "src": src,
-                        "radius": radius
-                    },
-                    "geometry": {
-                        "type": "Point",
-                        "coordinates": [n.x * scale, -n.y * scale]
+                            : 'dept';     
+                
+                if (type === 'product') {
+                    properties.type = type;
+                    properties.name = name;
+                    properties.dept = n.parent.parent.parent.id;
+                    properties.subdept = n.parent.parent.id;
+                    properties.brand = n.parent.id;
+                    properties.parent = n.parent.id;
+                    properties.price = n.price;
+                    properties.src = n.img;
+                } else if (type === 'brand') {
+                    properties.type = type;
+                    properties.name = name;
+                    properties.dept = n.parent.parent.id;
+                    properties.subdept = n.parent.id;
+                    properties.parent = n.parent.id;
+                    properties.src = 'category-images/brands/' + name.toLowerCase().replace(/[\W_]+/g,'-');
+                    if (n.parent.name.toProperCase() === 'Yogurt') { 
+                        properties.src += '.png';
+                        properties.name = '';
                     }
-                })
+                    properties.radius = n.r * scale;
+                    properties.value = n.value;
+                } else if (type === 'subdept') {
+                    properties.type = type;
+                    properties.name = name;
+                    properties.dept = n.parent.id;
+                    properties.parent = n.parent.id;
+                    properties.src = 'category-images/subdepartments/' + n.parent.name.toLowerCase().replace(/[\W_]+/g,'-') + '-' + name.toLowerCase().replace(/[\W_]+/g,'-') + '.png';
+                    properties.radius = n.r * scale;
+                    properties.value = n.value;
+                } else if (type === 'dept') {
+                    properties.type = type;
+                    properties.name = name;
+                    properties.src = 'category-images/departments/' + name.toLowerCase().replace(/[\W_]+/g,'-') + '.png';
+                    properties.radius = n.r * scale;
+                    properties.value = n.value;
+                }                            
+                feature.properties = properties;
+                feature.geometry = geometry;
+                feature.id = n.id;
+                featuresObj.features.push(feature);
             }
             else { continue; }
         }
@@ -207,8 +229,6 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     var focus = root,
     nodes = pack.nodes(root),
     view;
-    console.log(nodes[100].parent);
-    console.log(nodes[100].parent.name.replace(/[\W_]+/g,'-'));
     
 
     var drag = d3.behavior.drag()
@@ -272,59 +292,46 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
        outCircle(node);
     });
 
-         // var text = svg.selectAll("text")
-         //         .data(nodes)
-         //         .enter().append("text")
-         //         .attr("class", "label")
-         //         .style("fill-opacity", function(d) {
-         //             return d.parent === root ? 1 : 0;
-         //         })
-         //         .style("display", function(d) {
-         //             return d.parent === root ? "inline" : "none";
-         //         })
-         //         .text(function(d) {
-         //             return d.name;
-         //         });
 
-         var node = svg.selectAll("circle,text");
+    var node = svg.selectAll("circle,text");
 
-         svg.selectAll(".node--leaf, .node--middle").call(drag);
+    svg.selectAll(".node--leaf, .node--middle").call(drag);
 
-         d3.select("body")
-         .style("background", color(-1))
+    d3.select("body")
+    .style("background", color(-1))
 
-         draw();
+    draw();
 
-         function draw() {
-           var k = diameter / (root.r * 2 + margin);
-             // node.attr("transform", function(d) {
-             //     return "translate(" + (d.x - root.x) * k + "," + (d.y - root.y) * k + ")";
-             // });
-             circle.attr('cx', function(d) {
-                return (d.x - root.x) * k;
-            })
-             circle.attr('cy', function(d) {
-                return (d.y - root.y) * k;
-            })
-             circle.attr("r", function(d) {
-               return d.r * k;
-           });
-         }
+    function draw() {
+        var k = diameter / (root.r * 2 + margin);
+            // node.attr("transform", function(d) {
+            //     return "translate(" + (d.x - root.x) * k + "," + (d.y - root.y) * k + ")";
+            // });
+            circle.attr('cx', function(d) {
+            return (d.x - root.x) * k;
+        })
+            circle.attr('cy', function(d) {
+            return (d.y - root.y) * k;
+        })
+            circle.attr("r", function(d) {
+            return d.r * k;
+        });
+    }
 
-        var overCircle = function(d) {
-           if (d != draggedNode) {
-               console.log(d)
-               selectedNode = d;
-                 //updateTempConnector();
-             }
-         };
-         var outCircle = function(d) {
-           if (d != draggedNode) {
-                 //selectedNode = null;
-                 //updateTempConnector();
-             }
-         };
+    var overCircle = function(d) {
+        if (d != draggedNode) {
+            console.log(d)
+            selectedNode = d;
+                //updateTempConnector();
+            }
+        };
+        var outCircle = function(d) {
+        if (d != draggedNode) {
+                //selectedNode = null;
+                //updateTempConnector();
+            }
+        };
 
 
- });
+});
 </script>
