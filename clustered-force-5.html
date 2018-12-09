@@ -11,7 +11,7 @@
 var width = 960,
     height = 500,
     maxRadius = 12;
-    padding = .5, // separation between same-color nodes
+    padding = 1, // separation between same-color nodes
     clusterPadding = 6; // separation between different-color nodes
 
 var n = 200, // total number of circles
@@ -25,7 +25,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
 
   var pack = d3.pack()
     .size([(width), (height)])
-    .padding(0);  
+    .padding(1);  
 
   root = d3.hierarchy(root)
       .sum(function(d) { return d.size; })
