@@ -18,7 +18,7 @@ var n = 200, // total number of circles
     m = 10; // number of distinct clusters
 
 var color = d3.scaleOrdinal(d3.schemeCategory20)
-    .domain(d3.range(19));
+    .domain(d3.range(20));
 
 
 d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
@@ -138,6 +138,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
 })
 
 var plotUpdatedPositions = function(packedFeatures, clusteredSubdepts) {
+  const deptColors = {};
   packedFeatures.children.forEach(dept => { 
     const subdeptsCoords = [];
     dept.children.forEach(subdept => {
@@ -164,6 +165,7 @@ var plotUpdatedPositions = function(packedFeatures, clusteredSubdepts) {
     console.log(deptCoord);
     dept.x = deptCoord[0];
     dept.y = deptCoord[1];
+    deptColors[dept.data.name] = color(dept.data.name);
   })
 
   let nodes = packedFeatures.descendants();
@@ -241,6 +243,7 @@ var plotUpdatedPositions = function(packedFeatures, clusteredSubdepts) {
     return value;
   }
   download(nodes, 'd3-nodes.json', 'text/json');
+  download(deptColors, 'd3-colors.json', 'text/json');
 
 }
 
