@@ -55,7 +55,7 @@ var color = d3.scale.linear()
 .interpolate(d3.interpolateHcl);
 
 var pack = d3.layout.pack()
-.padding(0.5)
+.padding(2)
 .size([diameter - margin, diameter - margin])
 .sort(function(a, b) { return b.value - a.value; })
 .value(function(d) {
