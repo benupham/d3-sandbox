@@ -14,9 +14,6 @@ var width = 960,
     padding = 0, // separation between same-color nodes
     clusterPadding = 0; // separation between different-color nodes
 
-var n = 200, // total number of circles
-    m = 10; // number of distinct clusters
-
 var color = d3.scaleOrdinal(d3.schemeCategory20)
     .domain(d3.range(20));
 
@@ -46,7 +43,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   console.log('subdepts',subdepts)
 
   // The largest node for each cluster.
-  var clusters = new Array(m);
+  // var clusters = new Array(m);
   var clustersObj = {};
 
   var nodes = subdepts.map(function(sd) {

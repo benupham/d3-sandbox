@@ -35,7 +35,7 @@ var svg = d3.select("body").append("svg")
 var link = svg.selectAll(".link"),
   node = svg.selectAll("g.node");
 
-d3.json("testd3dataNoSalesDept.json", function (error, json) {
+d3.json("../data/testd3dataNoSalesDept.json", function (error, json) {
   if (error) throw error;
 
   root = json;
@@ -97,7 +97,7 @@ function update() {
 
   // Append images
   nodeEnter.append("svg:image")
-    .attr("xlink:href", function (d) { return d.img || "product-images/missing-item.jpg"; })
+    .attr("xlink:href", function (d) { return "../" + (d.img || "product-images/missing-item.jpg"); })
     .attr("x", function (d) { return -100; })
     .attr("y", function (d) { return -100; })
     .attr("height", 200)
@@ -137,8 +137,13 @@ function click(d) {
       d.children = d._children;
       d._children = null;
       d.fixed = true; 
+      d.children.forEach(c => {
+        c.x = d.x * Math.random() * 10;
+        c.y = d.y * Math.random() * 10;
+      });
     }
     update();
+
   }
 }
 

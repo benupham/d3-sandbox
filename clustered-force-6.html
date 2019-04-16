@@ -19,7 +19,7 @@ var color = d3.scaleOrdinal(d3.schemeCategory20)
 
 
 d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
-  console.log('og root',root)
+  
   var pack = d3.pack()
     .size([(width), (height)])
     .padding(2);  
@@ -27,8 +27,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   root = d3.hierarchy(root)
       .sum(function(d) { return d.size; })
       .sort(function(a, b) { return b.value - a.value; });
-      console.log('root',root);
-      console.log('the pack',pack(root))
+     
   var thePack = pack(root);  
 
   var depts = [];
@@ -48,7 +47,6 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     });
   });
 
-  console.log('depts',depts[0])
 
   // The largest node for each group: depts, subdepts, brands and products.
   // Labeled with their parent's name. 
@@ -60,15 +58,14 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
         dept = d.parent.data.name,
         type = d.type,
         r = d.r,
+        // TODO Need to initialize with the x,y of their parent at the time of click
+        // not based on the original pack
         n = {cluster: dept, radius: r, x: d.x, y: d.y, id: id, type: type, data: data};
     if (!clustersObj[dept] || (r > clustersObj[dept].radius)) clustersObj[dept] = n;
     return n;
   }
 
-
-
   var nodes = depts.map( d=> createClusteredNode(d));
-
 
   var simulation = d3.forceSimulation()
     // keep entire simulation balanced around screen center
@@ -88,24 +85,42 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     // apply collision with padding
     .force('collide', d3.forceCollide(function (d) { return d.radius + padding; })
       .strength(0))
+     // .nodes(nodes);
+  
+     
 
-    .on('tick', layoutTick)
-    .nodes(nodes);
+      var svg = d3.select('body').append('svg')
+        .attr('width', width)
+        .attr('height', height);
+  
+  // Start or restart     
+  function update() {
+
+    simulation.nodes(nodes)
     
-  var svg = d3.select('body').append('svg')
-      .attr('width', width)
-      .attr('height', height);
+    simulation.on('tick', layoutTick);
 
-  var node = svg.selectAll('circle')
-    .data(nodes)
-    .enter().append('circle')
-      .style('fill', function (d) { return 'blue'; })
-      .call(d3.drag()
-        .on('start', dragstarted)
-        .on('drag', dragged)
-        .on('end', dragended)
-      )
-      .on('click', click);
+    var node = svg.selectAll('circle')
+      .data(nodes, function(d) { return d.id;})
+      .enter().append('circle')
+        .style('fill', function (d) { return 'blue'; })
+        .call(d3.drag()
+          .on('start', dragstarted)
+          .on('drag', dragged)
+          .on('end', dragended)
+        )
+        .on('click', click);
+        console.log('node',node)
+        console.log('node',node._groups[0][0].__data__)
+    node.exit().remove();    
+
+    function layoutTick (e) {
+      node
+        .attr('cx', function (d) { return d.x; })
+        .attr('cy', function (d) { return d.y; })
+        .attr('r', function (d) { return d.radius; });
+    }
+  }  
 
   function dragstarted (d) {
     if (!d3.event.active) simulation.alphaTarget(0.3).restart();
@@ -125,7 +140,8 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   }
 
   function click(d) {
-    console.log(d);
+    console.log('clicked node',d);
+    console.log('nodes in click function', nodes)
     let newNodes = []; 
     if (d.type == 'department') {
       newNodes = subdepts.filter(sd => sd.parent.data.id == d.id)
@@ -135,16 +151,18 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     } else if (d.type == 'brand') {
 
     }
-    console.log(nodes)
+    
     newNodes.forEach(n => {
-      nodes.push(createClusteredNode(n));
-      
+      nodes.push(createClusteredNode(n));     
     });
-    console.log(nodes)
-    console.log(node)
-    simulation.nodes(nodes);
-    console.log(simulation.nodes())
-    console.log(node)
+    
+    for( var i = 0; i < nodes.length; i++){ 
+      if ( nodes[i].id === d.id) {
+      nodes.splice(i, 1); 
+      }
+    }
+    simulation.nodes(nodes)
+    update()
   }
 
   // ramp up collision strength to provide smooth transition
@@ -155,13 +173,9 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     if (dt >= 1.0) t.stop();
   });
     
-  function layoutTick (e) {
-    node
-      .attr('cx', function (d) { return d.x; })
-      .attr('cy', function (d) { return d.y; })
-      .attr('r', function (d) { return d.radius; });
-  }
 
+
+  update();
 
 })
 
