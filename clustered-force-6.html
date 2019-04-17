@@ -59,13 +59,11 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   function createClusteredNode (d) {
     var id = d.data.id,
         data = d.data,
-        dept = d.parent.data.name,
+        parent = d.parent.data.name,
         type = d.type,
         r = d.r,
-        // TODO Need to initialize with the x,y of their parent at the time of click
-        // not based on the original pack
-        n = {cluster: dept, radius: r, x: d.x, y: d.y, id: id, type: type, data: data};
-    if (!clustersObj[dept] || (r > clustersObj[dept].radius)) clustersObj[dept] = n;
+        n = {cluster: parent, radius: r, x: d.x, y: d.y, id: id, type: type, data: data};
+    if (!clustersObj[parent] || (r > clustersObj[parent].radius)) clustersObj[parent] = n;
     return n;
   }
 
@@ -104,7 +102,9 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     
     node = node.enter()
         .append('circle')      
-        .style('fill', function (d) { return d.type === 'department' ? 'blue' : d.type === 'subdepartment' ? 'yellow' : 'green'; })
+        .style('fill', function (d) { 
+          return d.type === 'department' ? 'blue' : 
+                 d.type === 'subdepartment' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; })
         .merge(node)
         .call(d3.drag()
           .on('start', dragstarted)
@@ -146,19 +146,36 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     if (d.type == 'department') {
       newNodes = subdepts.filter(sd => sd.parent.data.id == d.id)
     } else if (d.type == 'subdepartment') {
-      newNodes = brands.filter(sd => sd.parent.data.id == d.id)
+      newNodes = brands.filter(b => b.parent.data.id == d.id)
     } else if (d.type == 'brand') {
-
+      newNodes = products.filter(p => p.parent.data.id == d.id)
     }
-    
+    console.log(d)
     newNodes.forEach(n => {
+      n.x = d.x + Math.random() * 10;
+      n.y = d.y + Math.random() * 10;
       nodes.push(createClusteredNode(n));   
-      console.log(n.type)  
     });
     
+    // Remove the clicked parent node
     for( var i = 0; i < nodes.length; i++){ 
       if ( nodes[i].id === d.id) {
-      nodes.splice(i, 1); 
+        const removedNode = nodes.splice(i, 1)[0];
+        console.log(removedNode)
+        // If the clicked node was the biggest in its cluster, find 2nd biggest
+        if (clustersObj[removedNode.cluster] === removedNode) {
+          console.log(clustersObj[removedNode.cluster].data.name)
+          clustersObj[removedNode.cluster] = null; 
+          console.log('null?',clustersObj[removedNode.cluster])
+          nodes.forEach(n => {
+            if (n.cluster === removedNode.cluster && (!clustersObj[removedNode.cluster] || n.radius > clustersObj[removedNode.cluster].radius)) 
+            {
+              clustersObj[removedNode.cluster] = n;
+            }
+          })
+          console.log(clustersObj[removedNode.cluster].data.name)
+        }
+         
       }
     }
     //simulation.nodes(nodes)
