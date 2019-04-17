@@ -14,6 +14,10 @@ var width = 960,
     padding = 0, // separation between same-color nodes
     clusterPadding = 0; // separation between different-color nodes
 
+var svg = d3.select('body').append('svg')
+    .attr('width', width)
+    .attr('height', height);    
+
 var color = d3.scaleOrdinal(d3.schemeCategory20)
     .domain(d3.range(20));
 
@@ -67,7 +71,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
 
   var nodes = depts.map( d=> createClusteredNode(d));
 
-  var simulation = d3.forceSimulation()
+  var simulation = d3.forceSimulation(nodes)
     // keep entire simulation balanced around screen center
     .force('center', d3.forceCenter(width/2, height/2))
     
@@ -85,42 +89,40 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     // apply collision with padding
     .force('collide', d3.forceCollide(function (d) { return d.radius + padding; })
       .strength(0))
-     // .nodes(nodes);
-  
-     
+    
+    .on('tick', layoutTick);  
 
-      var svg = d3.select('body').append('svg')
-        .attr('width', width)
-        .attr('height', height);
-  
+
+      
+     // .nodes(nodes);
+  var node = svg.selectAll('circle');  
   // Start or restart     
   function update() {
 
-    simulation.nodes(nodes)
+    node = node.data(nodes, function(d) { return d.id;});
+    node.exit().remove();
     
-    simulation.on('tick', layoutTick);
-
-    var node = svg.selectAll('circle')
-      .data(nodes, function(d) { return d.id;})
-      .enter().append('circle')
-        .style('fill', function (d) { return 'blue'; })
+    node = node.enter()
+        .append('circle')      
+        .style('fill', function (d) { return d.type === 'department' ? 'blue' : d.type === 'subdepartment' ? 'yellow' : 'green'; })
+        .merge(node)
         .call(d3.drag()
           .on('start', dragstarted)
           .on('drag', dragged)
           .on('end', dragended)
         )
         .on('click', click);
-        console.log('node',node)
-        console.log('node',node._groups[0][0].__data__)
-    node.exit().remove();    
 
-    function layoutTick (e) {
+    simulation.nodes(nodes)
+    simulation.alpha(1).restart();
+  }  
+
+  function layoutTick (e) {
       node
         .attr('cx', function (d) { return d.x; })
         .attr('cy', function (d) { return d.y; })
         .attr('r', function (d) { return d.radius; });
-    }
-  }  
+  }
 
   function dragstarted (d) {
     if (!d3.event.active) simulation.alphaTarget(0.3).restart();
@@ -140,20 +142,18 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   }
 
   function click(d) {
-    console.log('clicked node',d);
-    console.log('nodes in click function', nodes)
     let newNodes = []; 
     if (d.type == 'department') {
       newNodes = subdepts.filter(sd => sd.parent.data.id == d.id)
-      console.log('newNodes',newNodes)
     } else if (d.type == 'subdepartment') {
-
+      newNodes = brands.filter(sd => sd.parent.data.id == d.id)
     } else if (d.type == 'brand') {
 
     }
     
     newNodes.forEach(n => {
-      nodes.push(createClusteredNode(n));     
+      nodes.push(createClusteredNode(n));   
+      console.log(n.type)  
     });
     
     for( var i = 0; i < nodes.length; i++){ 
@@ -161,7 +161,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
       nodes.splice(i, 1); 
       }
     }
-    simulation.nodes(nodes)
+    //simulation.nodes(nodes)
     update()
   }
 
