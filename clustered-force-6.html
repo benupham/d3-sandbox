@@ -62,7 +62,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
         parent = d.parent.data.name,
         type = d.type,
         r = d.r,
-        n = {cluster: parent, radius: r, x: d.x, y: d.y, id: id, type: type, data: data};
+        n = {cluster: parent, radius: 20, x: d.x, y: d.y, id: id, type: type, data: data};
     if (!clustersObj[parent] || (r > clustersObj[parent].radius)) clustersObj[parent] = n;
     return n;
   }
@@ -98,6 +98,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   function update() {
 
     node = node.data(nodes, function(d) { return d.id;});
+    
     node.exit().remove();
     
     node = node.enter()
@@ -114,7 +115,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
         .on('click', click);
 
     simulation.nodes(nodes)
-    simulation.alpha(1).restart();
+    simulation.alpha(0.3).restart();
   }  
 
   function layoutTick (e) {
@@ -151,11 +152,8 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
       newNodes = products.filter(p => p.parent.data.id == d.id)
     }
     console.log(d)
-    newNodes.forEach(n => {
-      n.x = d.x + Math.random() * 10;
-      n.y = d.y + Math.random() * 10;
-      nodes.push(createClusteredNode(n));   
-    });
+
+
     
     // Remove the clicked parent node
     for( var i = 0; i < nodes.length; i++){ 
@@ -164,22 +162,27 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
         console.log(removedNode)
         // If the clicked node was the biggest in its cluster, find 2nd biggest
         if (clustersObj[removedNode.cluster] === removedNode) {
-          console.log(clustersObj[removedNode.cluster].data.name)
           clustersObj[removedNode.cluster] = null; 
-          console.log('null?',clustersObj[removedNode.cluster])
           nodes.forEach(n => {
             if (n.cluster === removedNode.cluster && (!clustersObj[removedNode.cluster] || n.radius > clustersObj[removedNode.cluster].radius)) 
             {
               clustersObj[removedNode.cluster] = n;
             }
           })
-          console.log(clustersObj[removedNode.cluster].data.name)
         }
-         
       }
     }
-    //simulation.nodes(nodes)
-    update()
+    
+    // Set location of entering nodes around position of parent node
+    // Set a timer, then update for each
+    newNodes.forEach((n,i) => {
+      d3.timeout(function() {
+        n.x = d.x + Math.random() * 10;
+        n.y = d.y + Math.random() * 10;
+        nodes.push(createClusteredNode(n));   
+        update()
+      }, 75 * i)
+    });
   }
 
   // ramp up collision strength to provide smooth transition
