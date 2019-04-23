@@ -34,7 +34,7 @@ var color = d3.scaleOrdinal(d3.schemeCategory20)
 
 
 d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
-  
+  console.log('root',root)
   var pack = d3.pack()
     .size([(width), (height)])
     .padding(2);  
@@ -42,12 +42,13 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   root = d3.hierarchy(root)
       .sum(function(d) { return d.size; })
       .sort(function(a, b) { return b.value - a.value; });
-     
+  console.log('root',root)   
   var thePack = pack(root);  
 
   var depts = [];
   var subdepts = [];
   var brands = [];
+  var products = [];
 
   thePack.children.forEach(d => {
     d.type = 'department';
@@ -58,8 +59,12 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
       sd.children.forEach(b => {
         b.type = 'brand';
         brands.push(b);
-      })
-    });
+        b.children.forEach(p => {
+          p.type = 'product';
+          products.push(p);
+        })
+      });
+    });  
   });
 
 
@@ -70,7 +75,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   function createClusteredNode (d) {
     var id = d.data.id,
         data = d.data,
-        parent = d.parent.data.name,
+        parent = d.singleton ? d.data.name : d.parent.data.name,
         type = d.type,
         r = d.r,
         n = {cluster: parent, radius: 20, x: d.x, y: d.y, id: id, type: type, data: data};
@@ -97,6 +102,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
 
     // apply collision with padding
     .force('collide', d3.forceCollide(function (d) { return d.radius + padding; })
+      .iterations(3)
       .strength(0))
     
     .on('tick', layoutTick);  
