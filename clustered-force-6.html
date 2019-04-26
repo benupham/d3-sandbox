@@ -35,32 +35,41 @@ var color = d3.scaleOrdinal(d3.schemeCategory20)
 
 d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   console.log('root',root)
-  var pack = d3.pack()
-    .size([(width), (height)])
-    .padding(2);  
+  // var pack = d3.pack()
+  //   .size([(width), (height)])
+  //   .padding(2);  
 
-  root = d3.hierarchy(root)
-      .sum(function(d) { return d.size; })
-      .sort(function(a, b) { return b.value - a.value; });
+  // root = d3.hierarchy(root)
+      // .sum(function(d) { return d.size; })
+      // .sort(function(a, b) { return b.value - a.value; });
   console.log('root',root)   
-  var thePack = pack(root);  
+  // var thePack = pack(root);  
 
   var depts = [];
   var subdepts = [];
   var brands = [];
   var products = [];
 
-  thePack.children.forEach(d => {
+  root.children.forEach(d => {
     d.type = 'department';
+    d.parent = 0;
+    d.radius = 50;
     depts.push(d);
     d.children.forEach(sd => {
       sd.type = 'subdepartment';
+      sd.parent = d.id;
+      sd.radius = 40;
       subdepts.push(sd);
       sd.children.forEach(b => {
         b.type = 'brand';
+        b.parent = sd.id;
+        b.radius = 30;
         brands.push(b);
         b.children.forEach(p => {
           p.type = 'product';
+          p.parent = b.id;
+          p.radius = 20;
+          p.children = [];
           products.push(p);
         })
       });
@@ -73,18 +82,16 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   var clustersObj = {};
   
   function createClusteredNode (d) {
-    var id = d.data.id,
-        data = d.data,
-        parent = d.singleton ? d.data.name : d.parent.data.name,
-        type = d.type,
-        r = d.r,
-        n = {cluster: parent, radius: 20, x: d.x, y: d.y, id: id, type: type, data: data};
-    if (!clustersObj[parent] || (r > clustersObj[parent].radius)) clustersObj[parent] = n;
-    return n;
+    d.x = (width / 2);
+    d.y = (height / 2);
+
+    if (!clustersObj[d.parent] || (d.children.length > clustersObj[d.parent].children.length)) clustersObj[d.parent] = d;
+    //return d;
   }
 
-  var nodes = depts.map( d=> createClusteredNode(d));
-
+  depts.forEach( d=> createClusteredNode(d));
+  var nodes = depts;
+  console.log(nodes)
   var simulation = d3.forceSimulation(nodes)
     // keep entire simulation balanced around screen center
     .force('center', d3.forceCenter(width/2, height/2))
@@ -96,7 +103,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
 
     // cluster by section
     .force('cluster', d3.forceCluster()
-      .centers(function (d) { return clustersObj[d.cluster]; })
+      .centers(function (d) { return clustersObj[d.parent]; })
       .strength(0.5)
       .centerInertia(0.1))
 
@@ -122,14 +129,10 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
           return d.type === 'department' ? 'blue' : 
                  d.type === 'subdepartment' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; })
         .merge(node)
-        .call(d3.drag()
-          .on('start', dragstarted)
-          .on('drag', dragged)
-          .on('end', dragended)
-        )
         .on('click', click);
 
     simulation.nodes(nodes)
+    //TODO: change alpha depending on number of nodes to be added; less if fewer
     simulation.alpha(0.7).restart();
   }  
 
@@ -140,31 +143,15 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
         .attr('r', function (d) { return d.radius; });
   }
 
-  function dragstarted (d) {
-    if (!d3.event.active) simulation.alphaTarget(0.3).restart();
-    d.fx = d.x;
-    d.fy = d.y;
-  }
-
-  function dragged (d) {
-    d.fx = d3.event.x;
-    d.fy = d3.event.y;
-  }
-
-  function dragended (d) {
-    if (!d3.event.active) simulation.alphaTarget(0);
-    d.fx = null;
-    d.fy = null;
-  }
-      
+     
   function click(d) {
     let newNodes = []; 
     if (d.type == 'department') {
-      newNodes = subdepts.filter(sd => sd.parent.data.id == d.id)
+      newNodes = subdepts.filter(sd => sd.parent == d.id)
     } else if (d.type == 'subdepartment') {
-      newNodes = brands.filter(b => b.parent.data.id == d.id)
+      newNodes = brands.filter(b => b.parent == d.id)
     } else if (d.type == 'brand') {
-      newNodes = products.filter(p => p.parent.data.id == d.id)
+      newNodes = products.filter(p => p.parent == d.id)
     }
     console.log(d)
 
@@ -174,12 +161,13 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
         const removedNode = nodes.splice(i, 1)[0];
         console.log(removedNode)
         // If the clicked node was the biggest in its cluster, find 2nd biggest
-        if (clustersObj[removedNode.cluster] === removedNode) {
-          clustersObj[removedNode.cluster] = null; 
+        if (clustersObj[removedNode.parent] === removedNode) {
+          clustersObj[removedNode.parent] = null; 
           nodes.forEach(n => {
-            if (n.cluster === removedNode.cluster && (!clustersObj[removedNode.cluster] || n.radius > clustersObj[removedNode.cluster].radius)) 
+            
+            if (n.parent === removedNode.parent && (!clustersObj[removedNode.parent] || n.children.length > clustersObj[removedNode.parent].children.length)) 
             {
-              clustersObj[removedNode.cluster] = n;
+              clustersObj[removedNode.parent] = n;
             }
           })
         }
@@ -192,7 +180,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
       d3.timeout(function() {
         n.x = d.x + Math.random() * 10;
         n.y = d.y + Math.random() * 10;
-        nodes.push(createClusteredNode(n));   
+        nodes.push(n);   
         update()
       }, 75 * i)
     });
