@@ -119,17 +119,23 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   // Start or restart     
   function update() {
 
-    node = node.data(nodes, function(d) { return d.id;});
+    node = node.data(nodes, function(d) { return d.id;})
     
     node.exit().remove();
-    
+
     node = node.enter()
-        .append('circle')      
+        .append('circle')
+        .attr("name", function (d) { return d.name; })      
         .style('fill', function (d) { 
           return d.type === 'department' ? 'blue' : 
-                 d.type === 'subdepartment' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; })
+                 d.type === 'subdepartment' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; 
+        })
         .merge(node)
         .on('click', click);
+    
+    
+
+    
 
     simulation.nodes(nodes)
     //TODO: change alpha depending on number of nodes to be added; less if fewer
