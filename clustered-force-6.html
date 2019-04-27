@@ -35,15 +35,6 @@ var color = d3.scaleOrdinal(d3.schemeCategory20)
 
 d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   console.log('root',root)
-  // var pack = d3.pack()
-  //   .size([(width), (height)])
-  //   .padding(2);  
-
-  // root = d3.hierarchy(root)
-      // .sum(function(d) { return d.size; })
-      // .sort(function(a, b) { return b.value - a.value; });
-  console.log('root',root)   
-  // var thePack = pack(root);  
 
   var depts = [];
   var subdepts = [];
@@ -86,7 +77,6 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     d.y = (height / 2);
 
     if (!clustersObj[d.parent] || (d.children.length > clustersObj[d.parent].children.length)) clustersObj[d.parent] = d;
-    //return d;
   }
 
   depts.forEach( d=> createClusteredNode(d));
@@ -109,12 +99,12 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
 
     // apply collision with padding
     .force('collide', d3.forceCollide(function (d) { return d.radius + padding; })
-      .iterations(3)
+      .iterations(1)
       .strength(0))
     
     .on('tick', layoutTick);  
 
-  var node = svg.selectAll('circle');  
+  var node = svg.selectAll('g.node');  
 
   // Start or restart     
   function update() {
@@ -122,14 +112,35 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     node = node.data(nodes, function(d) { return d.id;});
     
     node.exit().remove();
+
+    // Enter any new nodes.
+    node = node.enter().append("g")
+      .attr("class", "node")
+      .attr("name", function (d) { return d.name; })
+      .attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; })
+      //.merge(node)
+      .on("click", click)
+
+    // Append a circle
+    node.append("circle")
+      .attr("r", function (d) { return d.radius; })
+      .attr("name", function (d) { return d.name; })
+      .style('fill', function (d) { 
+        return d.type === 'department' ? 'blue' : 
+               d.type === 'subdepartment' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; 
+      })
+
+
+    // Append images
+    node.append("image")
+      .attr("xlink:href", function (d) { return "./" + (d.img || "product-images/missing-item.jpg"); })
+      .attr("name", function (d) { return d.name; })
+      .attr("x", function (d) { return -50; })
+      .attr("y", function (d) { return -50; })
+      .attr("height", 100)
+      .attr("width", 100);
     
-    node = node.enter()
-        .append('circle')      
-        .style('fill', function (d) { 
-          return d.type === 'department' ? 'blue' : 
-                 d.type === 'subdepartment' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; })
-        .merge(node)
-        .on('click', click);
+    // Append titles 
 
     simulation.nodes(nodes)
     //TODO: change alpha depending on number of nodes to be added; less if fewer
@@ -137,10 +148,7 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
   }  
 
   function layoutTick (e) {
-      node
-        .attr('cx', function (d) { return d.x; })
-        .attr('cy', function (d) { return d.y; })
-        .attr('r', function (d) { return d.radius; });
+      node.attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; });
   }
 
      
