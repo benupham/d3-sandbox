@@ -1,5 +1,7 @@
 data/
 product-images/
+category-images/
+images/
 node_modules/
 *.json
 .DS_Store

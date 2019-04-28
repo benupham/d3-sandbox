@@ -1,338 +1,219 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-
-<style>
-    .node {
-      cursor: pointer;
-    }
-
-    .node:hover {
-      stroke: #000;
-      stroke-width: 1.5px;
-    }
-
-    .node--leaf {
-      fill: white;
-    }
-
-    .label {
-      font: 11px "Helvetica Neue", Helvetica, Arial, sans-serif;
-      text-anchor: middle;
-      text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff;
-    }
-
-    .label,
-    .node--root {
-      pointer-events: none;
-    }
-</style>
-
+<title>Clustered Force Layout</title>
 <body>
-    <button id="products" class="json-download" value="4">Products</button>
-    <button id="brands" class="json-download" value="3">Brands</button>
-    <button id="subdepts" class="json-download" value="2">Subdepartments</button>
-    <button id="depts" class="json-download" value="1">Departments</button>
-    <button id="all" class="json-download" value="0">All</button>
-
-
-  <div id="downloadJson"></div>
-</body>
-<script src="//d3js.org/d3.v3.min.js"></script>
+  <!-- <svg id="circle-svg" width="960" height="960"></svg> -->
+<script src="//d3js.org/d3.v4.min.js"></script>
+<script src="https://unpkg.com/d3-force-attract@latest"></script>
+<script src="https://unpkg.com/d3-force-cluster@latest"></script>
 <script>
 
-//from here https://codepen.io/bupham/pen/yjogXa?editors=0010
-// THIS CODE USES D3 V3!!!
+var width = window.innerWidth,
+    height = window.innerHeight,
+    scale = 1,
+    zoomWidth = (width-scale*width)/2,
+    zoomHeight = (height-scale*height)/2,
+    padding = 10, // separation between same-color nodes
+    clusterPadding = 10; // separation between different-color nodes
 
-var margin = 20,
-diameter = 1800;
-
-var selectedNode = null,
-draggedNode = null;
-
-var color = d3.scale.linear()
-.domain([-1, 5])
-.range(["hsl(152,80%,80%)", "hsl(228,30%,40%)"])
-.interpolate(d3.interpolateHcl);
-
-var pack = d3.layout.pack()
-.padding(2)
-.size([diameter - margin, diameter - margin])
-.sort(function(a, b) { return b.value - a.value; })
-.value(function(d) {
-   return d.size;
-})
+var zoom = d3.zoom()
+  .scaleExtent([0.01,10])
+  .on("zoom", zoomed);  
 
 var svg = d3.select("body").append("svg")
-.attr("width", diameter)
-.attr("height", diameter)
-.append("g")
-.attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
-
-d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
-   if (error) throw error;
-
-   document.querySelectorAll('button.json-download')[0].onclick=downloadJsonHandler;
-   document.querySelectorAll('button.json-download')[1].onclick=downloadJsonHandler;
-   document.querySelectorAll('button.json-download')[2].onclick=downloadJsonHandler;
-   document.querySelectorAll('button.json-download')[3].onclick=downloadJsonHandler;
-   document.querySelectorAll('button.json-download')[4].onclick=downloadJsonHandler;
-
-   String.prototype.toProperCase = function () {
-       return this.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
-   };
-
-   function downloadJsonHandler(event) {
-        let depth = event.target.value;
-
-        const featuresObj = {
-         "type": "FeatureCollection",
-         "features": [],
-        };
-        
-        // Just set scale here by measuring the size of a product circle
-        let scale = 0;
-        for (var i = nodes.length - 1; i >= 0; i--) {
-            if (nodes[i].depth == 4) {
-                scale = 100 / nodes[i].r * Math.sqrt(2); 
-                
-                i = 0;
-            }
-        }
-        
-        // Get specific type of feature collection 
-        for (var i = nodes.length - 1; i >= 0; i--) {
-            let n = nodes[i];
-            if (n.depth == depth && depth == 2) { //subdept level
-                
-                featuresObj.features.push({
-                    "type": "Feature",
-                    "id": n.id,
-                    "properties": {
-                        "name": n.name,
-                        "type": "subdept",
-                        "radius": n.r * scale,
-                        "fill": "rgba(255,255,255,0.5)"
-                    },
-                    "geometry": {
-                        "type": "Point",
-                        "coordinates": [n.x * scale, -n.y * scale]
-                    }
-                });
-            } else if (n.depth == depth && depth == 1) { //dept level
-                featuresObj.features.push({
-                    "type": "Feature",
-                    "id": n.id,
-                    "properties": {
-                        "name": n.name,
-                        "type": "dept",
-                        "radius": n.r * scale,
-                        "fill": "rgba(255,255,255,0.5)"
-                    },
-                    "geometry": {
-                        "type": "Point",
-                        "coordinates": [n.x * scale, -n.y * scale]
-                    }
-                });
-            } else if (n.depth == depth && depth == 3) { //brand level
-                featuresObj.features.push({
-                    "type": "Feature",
-                    "id": n.id,
-                    "properties": {
-                        "name": n.name,
-                        "type": "brand",
-                        "src": n.src || "",
-                        "radius": n.r * scale,
-                        "fill": "rgba(255,255,255,0.5)"
-                    },
-                    "geometry": {
-                        "type": "Point",
-                        "coordinates": [n.x * scale, -n.y * scale]
-                    }
-                });
-            } else if (n.depth == depth && depth == 4) { //product level
-                featuresObj.features.push({
-                    "type": "Feature",
-                    "id": n.id,
-                    "properties": {
-                        "name": n.name,
-                        "type": "product",
-                        "price": n.price,
-                        "src": n.img,
-                    },
-                    "geometry": {
-                        "type": "Point",
-                        "coordinates": [n.x * scale, -n.y * scale]
-                    }
-                })
-            } else if (depth == 0) {
-                const feature = {};
-                const properties = {};
-                const geometry = {
-                    "type": "Point",
-                    "coordinates": [n.x * scale, -n.y * scale]
-                };
-
-                const name = n.name.toProperCase(); 
-                const type = n.depth == 4 ? 'product' 
-                            : n.depth == 3 ? 'brand'
-                            : n.depth == 2 ? 'subdept'
-                            : 'dept';     
-                
-                if (type === 'product') {
-                    properties.type = type;
-                    properties.name = name;
-                    properties.dept = n.parent.parent.parent.id;
-                    properties.subdept = n.parent.parent.id;
-                    properties.brand = n.parent.id;
-                    properties.parent = n.parent.id;
-                    properties.price = n.price;
-                    properties.src = n.img;
-                } else if (type === 'brand') {
-                    properties.type = type;
-                    properties.name = name;
-                    properties.dept = n.parent.parent.id;
-                    properties.subdept = n.parent.id;
-                    properties.parent = n.parent.id;
-                    properties.src = 'category-images/brands/' + name.toLowerCase().replace(/[\W_]+/g,'-');
-                    if (n.parent.name.toProperCase() === 'Yogurt') { 
-                        properties.src += '.png';
-                        properties.name = '';
-                    }
-                    properties.radius = n.r * scale;
-                    properties.value = n.value;
-                } else if (type === 'subdept') {
-                    properties.type = type;
-                    properties.name = name;
-                    properties.dept = n.parent.id;
-                    properties.parent = n.parent.id;
-                    properties.src = 'category-images/subdepartments/' + n.parent.name.toLowerCase().replace(/[\W_]+/g,'-') + '-' + name.toLowerCase().replace(/[\W_]+/g,'-') + '.png';
-                    properties.radius = n.r * scale;
-                    properties.value = n.value;
-                } else if (type === 'dept') {
-                    properties.type = type;
-                    properties.name = name;
-                    properties.src = 'category-images/departments/' + name.toLowerCase().replace(/[\W_]+/g,'-') + '.png';
-                    properties.radius = n.r * scale;
-                    properties.value = n.value;
-                }                            
-                feature.properties = properties;
-                feature.geometry = geometry;
-                feature.id = n.id;
-                featuresObj.features.push(feature);
-            }
-            else { continue; }
-        }
-
-        var dataStr = JSON.stringify(featuresObj, null, 2);
-        document.body.append(dataStr);
-    }
-
-    var focus = root,
-    nodes = pack.nodes(root),
-    view;
+  .attr("width", width)
+  .attr("height", height)
+  .call(zoom)
+  .append("g")
+  .attr("transform", "translate(" + zoomWidth + "," + zoomHeight + ") scale(" + scale + ")");
     
 
-    var drag = d3.behavior.drag()
-    .on("dragstart", function(d) {
-        draggedNode = d;
-
-    })
-    .on("drag", function(d, i) {
-        d.x += d3.event.dx;
-        d.y += d3.event.dy;
-        d.dragged = true;
-
-        if (d.children) {
-            d.children.forEach( child => {
-                child.x += d3.event.dx;
-                child.y += d3.event.dy;
-                d.dragged = true;
-
-                if (child.children) {
-                    child.children.forEach(grandchild => {
-                        grandchild.x += d3.event.dx;
-                        grandchild.y += d3.event.dy;
-                        d.dragged = true;
-
-                        if (grandchild.children) {
-                            grandchild.children.forEach(ggchild => {
-                                ggchild.x += d3.event.dx;
-                                ggchild.y += d3.event.dy;
-                                d.dragged = true;
-                            })
-                        }
-                    })
-                }
-            });                    
-        }
+var color = d3.scaleOrdinal(d3.schemeCategory20)
+    .domain(d3.range(20));
 
 
-        draw();
-    })
-    .on("dragend", function(d) {
-       console.log("dropped item:", d.name, "dropped on ", selectedNode.name);
-       draggedNode = null;
-    });
+d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
+  console.log('root',root)
 
-    var circle = svg.selectAll("circle")
-    .data(nodes)
-    .enter().append("circle")
-    .attr("class", function(d) {
-       return d.parent ? d.children ? "node node--middle" : "node node--leaf" : "node node--root";
-    })
-    .style("fill", function(d) {
-       return d.children ? color(d.depth) : null;
-    })
-    .style("fill-opacity", function(d) {
-        return d.children ? '0.5' : null;
-    })
-    .on("mouseover", function(node) {
-       overCircle(node);
-    })
-    .on("mouseout", function(node) {
-       outCircle(node);
-    });
+  var depts = [];
+  var subdepts = [];
+  var brands = [];
+  var products = [];
 
-
-    var node = svg.selectAll("circle,text");
-
-    svg.selectAll(".node--leaf, .node--middle").call(drag);
-
-    d3.select("body")
-    .style("background", color(-1))
-
-    draw();
-
-    function draw() {
-        var k = diameter / (root.r * 2 + margin);
-            // node.attr("transform", function(d) {
-            //     return "translate(" + (d.x - root.x) * k + "," + (d.y - root.y) * k + ")";
-            // });
-            circle.attr('cx', function(d) {
-            return (d.x - root.x) * k;
+  root.children.forEach(d => {
+    d.type = 'department';
+    d.parent = 0;
+    d.radius = 50;
+    depts.push(d);
+    d.children.forEach(sd => {
+      sd.type = 'subdepartment';
+      sd.parent = d.id;
+      sd.radius = 40;
+      subdepts.push(sd);
+      sd.children.forEach(b => {
+        b.type = 'brand';
+        b.parent = sd.id;
+        b.radius = 30;
+        brands.push(b);
+        b.children.forEach(p => {
+          p.type = 'product';
+          p.parent = b.id;
+          p.radius = 20;
+          p.children = [];
+          products.push(p);
         })
-            circle.attr('cy', function(d) {
-            return (d.y - root.y) * k;
-        })
-            circle.attr("r", function(d) {
-            return d.r * k;
-        });
+      });
+    });  
+  });
+
+
+  // The largest node for each group: depts, subdepts, brands and products.
+  // Labeled with their parent's name. 
+  var clustersObj = {};
+  
+  function createClusteredNode (d) {
+    d.x = (width / 2);
+    d.y = (height / 2);
+
+    if (!clustersObj[d.parent] || (d.children.length > clustersObj[d.parent].children.length)) clustersObj[d.parent] = d;
+  }
+
+  depts.forEach( d=> createClusteredNode(d));
+  var nodes = depts;
+  console.log(nodes)
+  var simulation = d3.forceSimulation(nodes)
+    // keep entire simulation balanced around screen center
+    .force('center', d3.forceCenter(width/2, height/2))
+    
+    // pull toward center
+    .force('attract', d3.forceAttract()
+      .target([width/2, height/2])
+      .strength(0.01))
+
+    // cluster by section
+    .force('cluster', d3.forceCluster()
+      .centers(function (d) { return clustersObj[d.parent]; })
+      .strength(0.5)
+      .centerInertia(0.1))
+
+    // apply collision with padding
+    .force('collide', d3.forceCollide(function (d) { return d.radius + padding; })
+      .iterations(2)
+      .strength(0))
+    
+    .on('tick', layoutTick);  
+
+  var node = svg.selectAll('g.node');  
+
+  // Start or restart     
+  function update() {
+
+    node = node.data(nodes, function(d) { return d.id;})
+    
+    node.exit().remove();
+
+    // Enter any new nodes.
+    nodeEnter = node.enter().append("g")
+      .attr("class", "node")
+      .attr("class", d => d.type)
+      .attr("name", function (d) { return d.name; })
+      .attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; })
+      .on("click", click)
+
+    // Append a circle
+      nodeEnter.append("circle")
+      .attr("r", function (d) { return d.radius; })
+      .attr("name", function (d) { return d.name; })
+      .attr("fill", "#fff")
+      .attr("stroke", function (d) { 
+        return d.type === 'department' ? 'blue' : 
+               d.type === 'subdepartment' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; 
+      })
+
+    // Append images
+      nodeEnter.append("image")
+      .attr("xlink:href", function (d) { return "./images/" + (d.img || "product-images/missing-item.jpg"); })
+      .attr("name", function (d) { return d.name; })
+      .attr("x", function (d) { return -Math.SQRT2 * d.radius / 2; })
+      .attr("y", function (d) { return -Math.SQRT2 * d.radius / 2; })
+      .attr("height", d => Math.SQRT2 * d.radius) 
+      .attr("width", d => Math.SQRT2 * d.radius)
+      
+      node = nodeEnter.merge(node);
+    
+    // Append titles 
+
+    simulation.nodes(nodes)
+    //TODO: change alpha depending on number of nodes to be added; less if fewer
+    simulation.alpha(0.7).restart();
+  }  
+
+  function layoutTick (e) {
+      node.attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; });
+  }
+
+     
+  function click(d) {
+    let newNodes = []; 
+    if (d.type == 'department') {
+      newNodes = subdepts.filter(sd => sd.parent == d.id)
+    } else if (d.type == 'subdepartment') {
+      newNodes = brands.filter(b => b.parent == d.id)
+    } else if (d.type == 'brand') {
+      newNodes = products.filter(p => p.parent == d.id)
     }
+    console.log(d)
 
-    var overCircle = function(d) {
-        if (d != draggedNode) {
-            console.log(d)
-            selectedNode = d;
-                //updateTempConnector();
+    // Remove the clicked parent node
+    for( var i = 0; i < nodes.length; i++){ 
+      if ( nodes[i].id === d.id) {
+        const removedNode = nodes.splice(i, 1)[0];
+        console.log(removedNode)
+        // If the clicked node was the biggest in its cluster, find 2nd biggest
+        if (clustersObj[removedNode.parent] === removedNode) {
+          clustersObj[removedNode.parent] = null; 
+          nodes.forEach(n => {
+            
+            if (n.parent === removedNode.parent && (!clustersObj[removedNode.parent] || n.children.length > clustersObj[removedNode.parent].children.length)) 
+            {
+              clustersObj[removedNode.parent] = n;
             }
-        };
-        var outCircle = function(d) {
-        if (d != draggedNode) {
-                //selectedNode = null;
-                //updateTempConnector();
-            }
-        };
+          })
+        }
+      }
+    }
+    
+    // Set location of entering nodes around position of parent node
+    // Set a timer, then update for each
+    newNodes.forEach((n,i) => {
+      d3.timeout(function() {
+        n.x = d.x + Math.random() * 10;
+        n.y = d.y + Math.random() * 10;
+        nodes.push(n);   
+        update()
+      }, 75 * i)
+    });
+  }
+
+  // ramp up collision strength to provide smooth transition
+  var transitionTime = 3000;
+  var t = d3.timer(function (elapsed) {
+    var dt = elapsed / transitionTime;
+    simulation.force('collide').strength(Math.pow(dt, 2) * 0.7);
+    if (dt >= 1.0) t.stop();
+  });
+    
 
 
-});
+  update();
+
+})
+
+function zoomed() {
+    svg.attr("transform", d3.event.transform);
+  }  
+
+
 </script>
+</body>
+</html>
