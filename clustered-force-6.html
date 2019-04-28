@@ -114,15 +114,14 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     node.exit().remove();
 
     // Enter any new nodes.
-    node = node.enter().append("g")
+    nodeEnter = node.enter().append("g")
       .attr("class", "node")
       .attr("name", function (d) { return d.name; })
       .attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; })
-      //.merge(node)
       .on("click", click)
 
     // Append a circle
-    node.append("circle")
+      nodeEnter.append("circle")
       .attr("r", function (d) { return d.radius; })
       .attr("name", function (d) { return d.name; })
       .style('fill', function (d) { 
@@ -130,15 +129,18 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
                d.type === 'subdepartment' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; 
       })
 
+    node = nodeEnter.merge(node);
+      
 
     // Append images
-    node.append("image")
-      .attr("xlink:href", function (d) { return "./" + (d.img || "product-images/missing-item.jpg"); })
-      .attr("name", function (d) { return d.name; })
-      .attr("x", function (d) { return -50; })
-      .attr("y", function (d) { return -50; })
-      .attr("height", 100)
-      .attr("width", 100);
+      // .append("image")
+      // .attr("xlink:href", function (d) { return "./" + (d.img || "product-images/missing-item.jpg"); })
+      // .attr("name", function (d) { return d.name; })
+      // .attr("x", function (d) { return -20; })
+      // .attr("y", function (d) { return -20; })
+      // .attr("height", 20)
+      // .attr("width", 20)
+      
     
     // Append titles 
 
