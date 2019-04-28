@@ -19,4 +19,4 @@ productsMaster.features.forEach(f => {
 });
 
 
-fs.writeFile('./data/productSet.js', JSON.stringify(d3ProductData, null, 2), (err) => {if (err) console.log(err); });
+fs.writeFile('./data/productSet.json', JSON.stringify(d3ProductData, null, 2), (err) => {if (err) console.log(err); });
