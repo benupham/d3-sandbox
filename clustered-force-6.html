@@ -8,14 +8,13 @@
 <script src="https://unpkg.com/d3-force-cluster@latest"></script>
 <script>
 
-var width = 960,
-    height = 500,
-    maxRadius = 12,
+var width = window.innerWidth,
+    height = window.innerHeight,
     scale = 1,
     zoomWidth = (width-scale*width)/2,
     zoomHeight = (height-scale*height)/2,
-    padding = 1, // separation between same-color nodes
-    clusterPadding = 0; // separation between different-color nodes
+    padding = 10, // separation between same-color nodes
+    clusterPadding = 10; // separation between different-color nodes
 
 var zoom = d3.zoom()
   .scaleExtent([0.01,10])
@@ -113,24 +112,10 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
     
     node.exit().remove();
 
-<<<<<<< HEAD
-    node = node.enter()
-        .append('circle')
-        .attr("name", function (d) { return d.name; })      
-        .style('fill', function (d) { 
-          return d.type === 'department' ? 'blue' : 
-                 d.type === 'subdepartment' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; 
-        })
-        .merge(node)
-        .on('click', click);
-    
-    
-
-    
-=======
     // Enter any new nodes.
     nodeEnter = node.enter().append("g")
       .attr("class", "node")
+      .attr("class", d => d.type)
       .attr("name", function (d) { return d.name; })
       .attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; })
       .on("click", click)
@@ -139,26 +124,24 @@ d3.json("./data/testd3dataNoSalesDept.json", function(error, root) {
       nodeEnter.append("circle")
       .attr("r", function (d) { return d.radius; })
       .attr("name", function (d) { return d.name; })
-      .style('fill', function (d) { 
+      .attr("fill", "#fff")
+      .attr("stroke", function (d) { 
         return d.type === 'department' ? 'blue' : 
                d.type === 'subdepartment' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; 
       })
 
-    node = nodeEnter.merge(node);
-      
-
     // Append images
-      // .append("image")
-      // .attr("xlink:href", function (d) { return "./" + (d.img || "product-images/missing-item.jpg"); })
-      // .attr("name", function (d) { return d.name; })
-      // .attr("x", function (d) { return -20; })
-      // .attr("y", function (d) { return -20; })
-      // .attr("height", 20)
-      // .attr("width", 20)
+      nodeEnter.append("image")
+      .attr("xlink:href", function (d) { return "./" + (d.img || "product-images/missing-item.jpg"); })
+      .attr("name", function (d) { return d.name; })
+      .attr("x", function (d) { return -Math.SQRT2 * d.radius / 2; })
+      .attr("y", function (d) { return -Math.SQRT2 * d.radius / 2; })
+      .attr("height", d => Math.SQRT2 * d.radius) 
+      .attr("width", d => Math.SQRT2 * d.radius)
       
+      node = nodeEnter.merge(node);
     
     // Append titles 
->>>>>>> productdetail
 
     simulation.nodes(nodes)
     //TODO: change alpha depending on number of nodes to be added; less if fewer
