@@ -1,0 +1,9 @@
+body {
+  font-family: Roboto, Arial, Helvetica, sans-serif;
+}
+.name {
+  font-size: 12px;
+} 
+.price {
+  font-size: 10px;
+}

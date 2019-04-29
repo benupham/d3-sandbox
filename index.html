@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <title>Clustered Force Layout</title>
+<link rel="stylesheet" href="styles/style.css">
 <body>
   <!-- <svg id="circle-svg" width="960" height="960"></svg> -->
 <script src="//d3js.org/d3.v4.min.js"></script>
@@ -58,7 +59,7 @@ d3.json("data/productSet.json", function(error, root) {
 
 
   // The largest node for each group: depts, subdepts, brands and products.
-  // Labeled with their parent's name. 
+  // Labeled with their parent's id. 
   var clustersObj = {};
   
   function createClusteredNode (d) {
@@ -111,27 +112,36 @@ d3.json("data/productSet.json", function(error, root) {
       .on("click", click)
 
     // Append a circle
-      nodeEnter.append("circle")
-      .attr("r", function (d) { return d.radius; })
-      .attr("name", function (d) { return d.name; })
-      .attr("fill", "#fff")
-      .attr("stroke", function (d) { 
-        return d.type === 'dept' ? 'blue' : 
-               d.type === 'subdept' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; 
-      })
+    nodeEnter.append("circle")
+    .attr("r", function (d) { return d.radius; })
+    .attr("name", function (d) { return d.name; })
+    .attr("fill", "#fff")
+    .attr("stroke", function (d) { 
+      return d.type === 'dept' ? 'blue' : 
+              d.type === 'subdept' ? 'yellow' : d.type === 'brand' ? 'green' : 'red'; 
+    })
 
     // Append images
-      nodeEnter.append("image")
-      .attr("xlink:href", function (d) { return "./images/" + (d.img || "product-images/missing-item.jpg"); })
-      .attr("name", function (d) { return d.name; })
-      .attr("x", function (d) { return -Math.SQRT2 * d.radius / 2; })
-      .attr("y", function (d) { return -Math.SQRT2 * d.radius / 2; })
-      .attr("height", d => Math.SQRT2 * d.radius) 
-      .attr("width", d => Math.SQRT2 * d.radius)
+    nodeEnter.append("image")
+    .attr("xlink:href", function (d) { return "./images/" + (d.img || "product-images/missing-item.jpg"); })
+    .attr("name", function (d) { return d.name; })
+    .attr("x", function (d) { return -Math.SQRT2 * d.radius / 2; })
+    .attr("y", function (d) { return -Math.SQRT2 * d.radius / 2; })
+    .attr("height", d => Math.SQRT2 * d.radius) 
+    .attr("width", d => Math.SQRT2 * d.radius)
+  
+    // Append title and price
+    nodeEnter.append("text")
+    .text(d =>  d.name)
+    .attr("class", "name")
+    .attr("x", function (d) { return -d.radius / 2; })
+    .attr("y", function (d) { return d.radius; })
+
+    nodeEnter.append("text")
+    .text(d =>  d.price)  
+    .attr("class", "price")  
       
-      node = nodeEnter.merge(node);
-    
-    // Append titles 
+    node = nodeEnter.merge(node);
 
     simulation.nodes(nodes)
     //TODO: change alpha depending on number of nodes to be added; less if fewer
